@@ -118,7 +118,7 @@ def do_run(folder_id: str, quantization_config: Optional[BitsAndBytesConfig] = N
 
 
 def main(
-    folder_id: str, run_full: bool = True, run_4bit: bool = True, run_8bit: bool = True, device: str='cuda'
+    folder_id: str, run_full: bool = True, run_4bit: bool = True, run_8bit: bool = True, run_4bitdouble:bool = True, device: str='cuda'
 ):
     if run_full:
         do_run(f"{folder_id}-full", quantization_config=None, device=device)
@@ -132,6 +132,12 @@ def main(
         do_run(
             f"{folder_id}-bnb8bit",
             quantization_config=BitsAndBytesConfig(load_in_8bit=True),
+            device=device
+        )
+    if run_4bitdouble:
+        do_run(
+            f"{folder_id}-bnb4bit-double",
+            quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_use_double_quant=True),
             device=device
         )
 
