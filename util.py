@@ -276,3 +276,8 @@ def create_uuid_folder():
     folder_path = os.path.join("model_outputs", folder_id)
     os.makedirs(folder_path, exist_ok=True)
     return folder_path
+
+def create_output_folder(folder_id: str):
+    folder_path = os.path.join("model_outputs", folder_id)
+    os.makedirs(folder_path, exist_ok=True)
+    return folder_path
