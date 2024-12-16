@@ -1,0 +1,6 @@
+matplotlib
+nbformat
+pandas
+seaborn
+torch
+transformers
