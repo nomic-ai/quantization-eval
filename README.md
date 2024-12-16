@@ -9,5 +9,5 @@ uvx --from 'huggingface_hub[cli]' huggingface-cli login
 run the code
 
 ```bash
-uv run main.py -- folder-prefix
+_TYPER_STANDARD_TRACEBACK=1 uv run main.py -- folder-prefix
 ```

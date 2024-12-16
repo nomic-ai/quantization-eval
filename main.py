@@ -16,15 +16,13 @@ from util import (
 )
 
 
-def do_run(folder_id: str, quantization_config: Optional[BitsAndBytesConfig] = None):
+def do_run(folder_id: str, quantization_config: Optional[BitsAndBytesConfig] = None, device: str='cuda'):
 
     model_name = "meta-llama/Llama-3.2-1B-Instruct"
     model = AutoModelForCausalLM.from_pretrained(
-        model_name, quantization_config=quantization_config
+        model_name, quantization_config=quantization_config, device_map=device
     )
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    device = "cpu"
-    model = model.to(device)
 
     max_new_tokens = 10
     prompt = "Is today before or after 2025?"
@@ -120,19 +118,21 @@ def do_run(folder_id: str, quantization_config: Optional[BitsAndBytesConfig] = N
 
 
 def main(
-    folder_id: str, run_full: bool = True, run_4bit: bool = True, run_8bit: bool = True
+    folder_id: str, run_full: bool = True, run_4bit: bool = True, run_8bit: bool = True, device: str='cuda'
 ):
     if run_full:
-        do_run(f"{folder_id}-full", quantization_config=None)
+        do_run(f"{folder_id}-full", quantization_config=None, device=device)
     if run_4bit:
         do_run(
             f"{folder_id}-bnb4bit",
             quantization_config=BitsAndBytesConfig(load_in_4bit=True),
+            device=device
         )
     if run_8bit:
         do_run(
             f"{folder_id}-bnb8bit",
             quantization_config=BitsAndBytesConfig(load_in_8bit=True),
+            device=device
         )
 
 
