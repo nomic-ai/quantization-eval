@@ -271,8 +271,3 @@ def top_tokens(model_outputs, input_ids, tokenizer, top_k=30):
         print("Unable to get attention weights")
         return None, None, None
     
-def create_uuid_folder():
-    folder_id = str(uuid.uuid4())
-    folder_path = os.path.join("model_outputs", folder_id)
-    os.makedirs(folder_path, exist_ok=True)
-    return folder_path

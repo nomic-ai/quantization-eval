@@ -1,0 +1,12 @@
+<|begin_of_text|><|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+Cutting Knowledge Date: December 2023
+Today Date: 17 Dec 2024
+
+<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+"Is today before or after 2025?"<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+Today's date is December 17, 2023. To determine whether today is before or after 2025, we need to calculate the year 2025.
+
+2023 is before 2025.<|eot_id|>
