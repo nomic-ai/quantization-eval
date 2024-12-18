@@ -256,16 +256,6 @@ def top_tokens(model_outputs, input_ids, tokenizer, top_k=30):
         # Create visualization
         fig = plot_mean_attention(sorted_info, top_k=top_k)
 
-        # # Calculate statistics
-        # unique_tokens = len(set(t.split(' (')[0] for t, _, _ in token_info))
-        # stats = {
-        #     "num_tokens": len(filtered_tokens),
-        #     "num_unique_tokens": unique_tokens,
-        #     "max_attention": filtered_attention.max(),
-        #     "min_attention": filtered_attention.min(),
-        #     "mean_attention": filtered_attention.mean()
-        # }
-
         return pd.DataFrame(sorted_info), fig#, stats
     else:
         print("Unable to get attention weights")
@@ -277,7 +267,7 @@ def create_uuid_folder():
     os.makedirs(folder_path, exist_ok=True)
     return folder_path
 
-def create_output_folder(folder_id: str):
-    folder_path = os.path.join("model_outputs", folder_id)
+def create_output_folder(run_id: str, prompt: str):
+    folder_path = os.path.join("model_outputs", run_id, prompt)
     os.makedirs(folder_path, exist_ok=True)
     return folder_path

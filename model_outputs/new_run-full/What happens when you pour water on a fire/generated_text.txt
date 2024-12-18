@@ -1,0 +1,12 @@
+<|begin_of_text|><|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+Cutting Knowledge Date: December 2023
+Today Date: 18 Dec 2024
+
+<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+What happens when you pour water on a fire<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+When you pour water on a fire, several things can happen:
+
+1. **Cooling effect**: Water can lower the temperature of the fire, which can help to extinguish it. The heat from the fire is transferred to the water, causing it
