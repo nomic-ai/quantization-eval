@@ -12,34 +12,36 @@ from util import top_tokens_by_layer, top_tokens, plot_attention_heads_by_layer
 
 print("===============loading model")
 precision = "bf16"
-model_name = "meta-llama/Llama-3.2-1B-Instruct"
+size = "1B"
+model_name = f"meta-llama/Llama-3.2-{size}-Instruct"
 model = AutoModelForCausalLM.from_pretrained(model_name)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-device = "cpu"
+device = "mps"
 model = model.to(device)
 
-def main(prompt, max_new_tokens=50, images=False):
+def main(prompt, max_new_tokens=250, images=False, save_embeddings=False, save_attentions=False):
 
-    print("===============setting hook")
+    if save_embeddings:
+        print("===============setting hook")
 
-    # clear pre-existing hooks
-    for _, module in model.named_modules():
-        module._forward_hooks.clear()
-        module._backward_hooks.clear()
+        # clear pre-existing hooks
+        for _, module in model.named_modules():
+            module._forward_hooks.clear()
+            module._backward_hooks.clear()
 
-    activation_sequences = []
+        activation_sequences = []
 
-    def collect_activations():
-        def hook(model, input, output):
-            # Capture full sequence representations
-            activation_sequences.append(output.detach().cpu().numpy())
-        return hook
+        def collect_activations():
+            def hook(model, input, output):
+                # Only capture the last token's embedding (shape: [1, 2048])
+                activation_sequences.append(output[0, -1].detach().cpu().numpy())
+            return hook
 
-    # Register hook on the final norm layer before lm_head
-    hook = model.model.norm.register_forward_hook(collect_activations())
+        # Register hook on the final norm layer before lm_head
+        hook = model.model.norm.register_forward_hook(collect_activations())
 
     print("===============setting up dirs")
-    output_dir = os.path.join("model_outputs", precision, str(uuid.uuid4()))
+    output_dir = os.path.join("model_outputs", size, precision, prompt)
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(os.path.join(output_dir, "logits"), exist_ok=True)
 
@@ -65,34 +67,41 @@ def main(prompt, max_new_tokens=50, images=False):
     print("===============starting generation")
 
     for step in tqdm(range(max_new_tokens)):
+        print("run model one step...")
         with torch.no_grad():
             outputs = model(
                 current_input_ids,
                 output_attentions=True,
                 return_dict=True
             )
-        
-        # Get logits for the next token
-        token_logits = outputs.logits[0]
-        next_token_logits = token_logits[-1]
-        next_token = torch.argmax(next_token_logits).unsqueeze(0).unsqueeze(0)
+        print("save top logits...")
+        # Get logits for the next token and find top token
+        next_token_logits = outputs.logits[0, -1]
+        next_token = next_token_logits.argmax().unsqueeze(0).unsqueeze(0)
         generated_token_ids.append(next_token.item())
         generated_tokens.append(next_token)
 
-        # Save logit distribution for this step
-        token_data = []
-        for token_id in range(len(next_token_logits)):
-            token = tokenizer.decode([token_id])
-            logit = next_token_logits[token_id].item()
-            token_data.append((token_id, token, logit))
+        # Get top 10 tokens and their logits efficiently
+        top_logits, top_indices = next_token_logits.topk(10)
+        
+        # Batch decode tokens
+        decoded_top_tokens = tokenizer.batch_decode([[i] for i in top_indices])
+        
+        # Create DataFrame directly from dict
+        df = pd.DataFrame({
+            'Token ID': top_indices.cpu().numpy(),
+            'Token': decoded_top_tokens,
+            'Logit': top_logits.cpu().numpy()
+        })
 
-        df = pd.DataFrame(token_data, columns=['Token ID', 'Token', 'Logit'])
-        df = df.sort_values(by='Logit', ascending=False)[:10]
+        # Save to CSV
         df.to_csv(
-            os.path.join(output_dir, f"logits/step_{step}_top_10_logit_distribution.csv"), 
+            os.path.join(output_dir, f"logits/step_{step}_top_10_logit_distribution.csv"),
             escapechar='\\',
             index=False
         )
+
+        print("save next")
 
         # Sample next token
         next_token = torch.argmax(next_token_logits).unsqueeze(0).unsqueeze(0)
@@ -105,16 +114,17 @@ def main(prompt, max_new_tokens=50, images=False):
         if next_token.item() == tokenizer.eos_token_id:
             break
 
-    hook.remove()
+    if save_embeddings:
+        hook.remove()
 
-    # save embeddings
-    embeddings_data = {
-        'embeddings': activation_sequences,
-        'prompt_tokens': input_ids[0].cpu().numpy().tolist(),
-        'generated_tokens': generated_token_ids,
-        'token_strings': [tokenizer.decode([tid]) for tid in generated_token_ids]
-    }
-    np.save(os.path.join(output_dir, 'embedding_sequences.npy'), embeddings_data, allow_pickle=True)
+        # save embeddings
+        embeddings_data = {
+            'embeddings': np.vstack(activation_sequences),  # Stack all embeddings into shape (n_tokens, 2048)
+            'prompt_tokens': input_ids[0].cpu().numpy().tolist(),
+            'generated_tokens': generated_token_ids,
+            'token_strings': [tokenizer.decode([tid]) for tid in generated_token_ids]
+        }
+        np.save(os.path.join(output_dir, 'embedding_sequences.npy'), embeddings_data, allow_pickle=True)
 
 
     # Save the full generation with all its special tokens
@@ -124,13 +134,14 @@ def main(prompt, max_new_tokens=50, images=False):
 
     # Save the attention tensor with shape 
     # (n_layers, n_batch, n_heads, n_prompt_tokens, n_prompt_tokens)
-    all_layers_attention = [layer.cpu().numpy() for layer in outputs.attentions]
-    attention_array = np.stack(all_layers_attention)
+    if save_attentions:
+        all_layers_attention = [layer.cpu().numpy() for layer in outputs.attentions]
+        attention_array = np.stack(all_layers_attention)
 
-    np.save(
-        os.path.join(output_dir, 'attention_scores.npy'), 
-        attention_array
-    )
+        np.save(
+            os.path.join(output_dir, 'attention_scores.npy'), 
+            attention_array
+        )
 
     # save images of the attention head matrices for each layer
     if images:
@@ -155,6 +166,7 @@ if __name__=="__main__":
     parser.add_argument('--prompts_file', default='prompts.txt')
     args = parser.parse_args()
     with open(args.prompts_file) as f:
-        prompts = f.readlines()
-    for p in prompts:
+        prompts = [x.replace('\n', '') for x in f.readlines()]
+    for p in prompts[:1]:
+        print(p)
         main(p)

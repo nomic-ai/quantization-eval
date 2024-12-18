@@ -238,7 +238,7 @@ def top_tokens(model_outputs, input_ids, tokenizer, top_k=30):
 
     if attention_weights:
         # Process attention weights
-        all_layers_attention = [layer.cpu().numpy() for layer in attention_weights]
+        all_layers_attention = [layer.cpu().float().numpy() for layer in attention_weights]
         stacked_attention = np.stack(all_layers_attention)
         last_token_attention = stacked_attention[:, 0, :, -1, :]
         mean_attention = last_token_attention.mean(axis=(0, 1))
@@ -266,7 +266,7 @@ def top_tokens(model_outputs, input_ids, tokenizer, top_k=30):
         #     "mean_attention": filtered_attention.mean()
         # }
 
-        return pd.DataFrame(sorted_info), fig#, stats
+        return pd.DataFrame(sorted_info), fig
     else:
         print("Unable to get attention weights")
         return None, None, None
